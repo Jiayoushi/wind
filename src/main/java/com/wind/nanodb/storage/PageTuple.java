@@ -8,6 +8,7 @@ import com.wind.nanodb.relations.ColumnType;
 import com.wind.nanodb.relations.Schema;
 import com.wind.nanodb.relations.SQLDataType;
 import com.wind.nanodb.relations.Tuple;
+import com.wind.nanodb.storage.heapfile.DataPage;
 
 
 /**
@@ -478,8 +479,7 @@ public abstract class PageTuple implements Tuple {
      * @param iCol the index of the column to set to <tt>NULL</tt>
      */
     private void setNullColumnValue(int iCol) {
-        /* TODO:  Implement!
-         *
+        /**
          * The column's flag in the tuple's null-bitmap must be set to true.
          * Also, the data occupied by the column's value must be removed.
          * There are many helpful methods that can be used for this method:
@@ -500,7 +500,20 @@ public abstract class PageTuple implements Tuple {
          * properly as well.  (Note that columns whose value is NULL will have
          * the special NULL_OFFSET constant as their offset in the tuple.)
          */
-        throw new UnsupportedOperationException("TODO:  Implement!");
+
+        if (isNullValue(iCol)) {
+            return;
+        }
+
+        setNullFlag(iCol, true);
+
+        ColumnType colType = schema.getColumnInfo(iCol).getType();
+        int len = getColumnValueSize(colType, valueOffsets[iCol]);
+
+        deleteTupleDataRange(valueOffsets[iCol], len);
+        pageOffset += len;
+
+        computeValueOffsets();
     }
 
 
@@ -519,8 +532,7 @@ public abstract class PageTuple implements Tuple {
         if (value == null)
             throw new IllegalArgumentException("value cannot be null");
 
-        /* TODO:  Implement!
-         *
+        /**
          * This time, the column's flag in the tuple's null-bitmap must be set
          * to false (if it was true before).
          *
@@ -545,7 +557,45 @@ public abstract class PageTuple implements Tuple {
          * Finally, once you have made space for the new column value, you can
          * write the value itself using the writeNonNullValue() method.
          */
-        throw new UnsupportedOperationException("TODO:  Implement!");
+
+        ColumnType colType = schema.getColumnInfo(iCol).getType();
+
+        int oldSize = 0;
+        if (isNullValue(iCol)) {
+            setNullFlag(iCol, false);
+        } else {
+            oldSize = getColumnValueSize(colType, valueOffsets[iCol]);
+        }
+
+        int newSize;
+        if (colType.getBaseType() == SQLDataType.VARCHAR) {
+            newSize = getStorageSize(colType, ((String)value).length());
+        } else {
+            newSize = getStorageSize(colType, 0);
+        }
+
+        if (newSize != oldSize) {
+            if (!isNullValue(iCol)) {
+                deleteTupleDataRange(valueOffsets[iCol], oldSize);
+                insertTupleDataRange(valueOffsets[iCol] + oldSize, newSize);
+            } else {
+                int off = getEndOffset();
+
+                // It is required to keep the each column's value in order, since
+                // the valueOffsets is calculated that way.
+                for (int i = iCol + 1; i < valueOffsets.length; i++) {
+                    if (!isNullValue(i)) {
+                        off = valueOffsets[i];
+                        break;
+                    }
+                }
+                insertTupleDataRange(off, newSize);
+            }
+            pageOffset += oldSize - newSize;
+            computeValueOffsets();
+        }
+
+        writeNonNullValue(dbPage, valueOffsets[iCol], colType, value);
     }
 
 

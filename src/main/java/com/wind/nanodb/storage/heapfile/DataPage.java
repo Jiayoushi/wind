@@ -61,7 +61,9 @@ public class DataPage {
     /**
      * Returns the number of slots in this data page.  This can be considered
      * to be the current "capacity" of the page, since any number of the slots
-     * could be set to {@link #EMPTY_SLOT} to indicate that they are empty.
+     * could be set to {@link #EMPTY_SLOT} to indicate that they are empty. Note
+     * that an empty slot can also contribute to the total number of slots when
+     * the empty slot is followed by non-empty slots.
      *
      * @param dbPage the data page to retrieve the number of slots for
      * @return the current number of slots in the page
@@ -596,7 +598,15 @@ public class DataPage {
                 " slots, but slot " + slot + " was requested for deletion.");
         }
 
-        // TODO:  Complete this implementation.
-        throw new UnsupportedOperationException("TODO:  Implement!");
+        deleteTupleDataRange(dbPage, getSlotValue(dbPage, slot), getTupleLength(dbPage, slot));
+
+        setSlotValue(dbPage, slot, EMPTY_SLOT);
+
+        for (int s = numSlots - 1; s >= 0; s--) {
+            int currSlotValue = getSlotValue(dbPage, s);
+            if (currSlotValue == EMPTY_SLOT) {
+                numSlots--;
+            }
+        }
     }
 }
