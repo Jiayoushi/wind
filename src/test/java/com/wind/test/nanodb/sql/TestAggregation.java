@@ -4,6 +4,7 @@ package com.wind.test.nanodb.sql;
 import com.wind.nanodb.expressions.TupleComparator;
 import com.wind.nanodb.expressions.TupleLiteral;
 import com.wind.nanodb.server.CommandResult;
+import org.junit.Test;
 
 /**
 * This class exercises the database with some aggregation statements against
@@ -31,6 +32,7 @@ public class TestAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testSum() throws Throwable {
         CommandResult result;
 
@@ -58,6 +60,7 @@ public class TestAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testMin() throws Throwable {
         CommandResult result;
 
@@ -87,6 +90,7 @@ public class TestAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testMax() throws Throwable {
         CommandResult result;
 
@@ -108,6 +112,7 @@ public class TestAggregation extends SqlTestCase {
         assert checkOrderedResults(expected2, result);
     }
 
+    @Test
     public void testEquals() throws Throwable {
         TupleLiteral expected1 = createTupleFromNum( 8000000 );
         TupleLiteral expected2 = createTupleFromNum( 8000000 );
@@ -122,6 +127,7 @@ public class TestAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testAverage() throws Throwable {
         CommandResult result;
 
@@ -149,6 +155,7 @@ public class TestAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testVariance() throws Throwable {
         CommandResult result;
 
@@ -175,6 +182,7 @@ public class TestAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testStdDev() throws Throwable {
         CommandResult result;
 
@@ -202,6 +210,7 @@ public class TestAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testCount() throws Throwable {
         CommandResult result;
 
@@ -228,6 +237,7 @@ public class TestAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testCountDistinct() throws Throwable {
         CommandResult result;
 
@@ -255,6 +265,7 @@ System.err.println("RESULT TUPLES = " + result.getTuples());
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testCountStar() throws Throwable {
         CommandResult result;
 

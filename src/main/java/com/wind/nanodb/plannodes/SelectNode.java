@@ -101,8 +101,7 @@ public abstract class SelectNode extends PlanNode {
                 done = true;
                 return null;
             }
-        }
-        while (!isTupleSelected(currentTuple));
+        } while (!isTupleSelected(currentTuple));
 
         // The current tuple now satisfies the predicate, so return it.
         return currentTuple;

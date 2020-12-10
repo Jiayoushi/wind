@@ -10,6 +10,8 @@ import com.wind.nanodb.relations.Schema;
 import com.wind.nanodb.relations.Tuple;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 
 /**
@@ -100,6 +102,10 @@ public abstract class ThetaJoinNode extends PlanNode {
         if (joinType == JoinType.SEMIJOIN || joinType == JoinType.ANTIJOIN)
             throw new UnsupportedOperationException("Not yet implemented!");
 
+        if (joinType == JoinType.LEFT_OUTER || joinType == JoinType.RIGHT_OUTER) {
+            return joinTuplesWithoutDuplicateColumns(left, right);
+        }
+
         TupleLiteral joinedTuple = new TupleLiteral();
         // appendTuple() also copies schema information from the source tuples.
 
@@ -115,6 +121,56 @@ public abstract class ThetaJoinNode extends PlanNode {
         return joinedTuple;
     }
 
+    protected boolean isOuterJoin() {
+        return joinType == JoinType.LEFT_OUTER || joinType == JoinType.RIGHT_OUTER;
+    }
+
+    protected boolean hasEqualColumnsAndEqualValues(Tuple left, Tuple right) {
+        Set<String> commonColumnNames = leftSchema.getCommonColumnNames(rightSchema);
+        if (commonColumnNames.size() == 0) {
+            return false;
+        }
+        for (String columnName : commonColumnNames) {
+            int leftIndex = leftSchema.getColumnIndex(columnName);
+            int rightIndex = rightSchema.getColumnIndex(columnName);
+            Object leftValue = left.getColumnValue(leftIndex);
+            Object rightValue = right.getColumnValue(rightIndex);
+
+            if (leftValue == null || rightValue == null || !leftValue.equals(rightValue)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    protected Tuple joinTuplesPadNull(Tuple left) {
+        //System.out.println(String.format("[%s] [%s] [%b]\n", left.toString(), right.toString(), abortIfNotEqual));
+
+        TupleLiteral joinedTuple = new TupleLiteral();
+        joinedTuple.appendTuple(left);
+
+        Set<String> commonColumnNames = leftSchema.getCommonColumnNames(rightSchema);
+        int count = rightSchema.getColumnInfos().size() - commonColumnNames.size();
+        for (int i = 0; i < count; ++i) {
+            joinedTuple.addValue(null);
+        }
+        return joinedTuple;
+    }
+
+    protected Tuple joinTuplesWithoutDuplicateColumns(Tuple left, Tuple right) {
+        TupleLiteral joinedTuple = new TupleLiteral();
+        joinedTuple.appendTuple(left);
+
+        Set<String> commonColumnNames = leftSchema.getCommonColumnNames(rightSchema);
+        for (int i = 0; i < right.getColumnCount(); ++i) {
+            String columnName = rightSchema.getColumnInfo(i).getName();
+            if (!commonColumnNames.contains(columnName)) {
+                joinedTuple.addValue(right.getColumnValue(i));
+            }
+        }
+        return joinedTuple;
+    }
+
 
     /**
      * Do initialization for the join operation. Resets state variables.
@@ -123,7 +179,8 @@ public abstract class ThetaJoinNode extends PlanNode {
     public void initialize() {
         super.initialize();
 
-        if (joinType != JoinType.CROSS && joinType != JoinType.INNER) {
+        if (joinType != JoinType.CROSS && joinType != JoinType.INNER
+                && joinType != JoinType.LEFT_OUTER && joinType != JoinType.RIGHT_OUTER) {
             throw new UnsupportedOperationException(
                 "We don't support joins of type " + joinType + " yet!");
         }

@@ -4,6 +4,7 @@ package com.wind.test.nanodb.sql;
 
 import com.wind.nanodb.expressions.TupleLiteral;
 import com.wind.nanodb.server.CommandResult;
+import org.junit.Test;
 
 
 /**
@@ -24,6 +25,7 @@ public class TestSelectProject extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
+    @Test
     public void testProjectReorderCols() throws Throwable {
         // Columns c, a
         TupleLiteral[] expected1 = {
@@ -63,6 +65,7 @@ public class TestSelectProject extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
+    @Test
     public void testProjectMath() throws Throwable {
         // Columns a - 10 as am, c * 3 as cm
         TupleLiteral[] expected = {
@@ -89,6 +92,7 @@ public class TestSelectProject extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
+    @Test
     public void testSelectProjectMath() throws Throwable {
         // Columns b, a - 10 as am, c * 3 as cm
         TupleLiteral[] expected = {

@@ -4,6 +4,7 @@ package com.wind.test.nanodb.sql;
 
 import com.wind.nanodb.expressions.TupleLiteral;
 import com.wind.nanodb.server.CommandResult;
+import org.junit.Test;
 
 
 /**
@@ -24,6 +25,7 @@ public class TestSimpleSelects extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
+    @Test
     public void testSelectNoPredicate() throws Throwable {
         TupleLiteral[] expected = {
             new TupleLiteral(0, null),
@@ -45,6 +47,7 @@ public class TestSimpleSelects extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
+    @Test
     public void testSelectSimplePredicates() throws Throwable {
         TupleLiteral[] expected1 = {
             new TupleLiteral(1, 10),

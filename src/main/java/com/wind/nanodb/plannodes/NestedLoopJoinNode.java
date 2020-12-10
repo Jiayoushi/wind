@@ -3,6 +3,7 @@ package com.wind.nanodb.plannodes;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -22,19 +23,20 @@ public class NestedLoopJoinNode extends ThetaJoinNode {
 
 
     /** Most recently retrieved tuple of the left relation. */
-    private Tuple leftTuple;
+    private Tuple outerTuple;
 
     /** Most recently retrieved tuple of the right relation. */
-    private Tuple rightTuple;
+    private Tuple innerTuple;
 
 
     /** Set to true when we have exhausted all tuples from our subplans. */
     private boolean done;
 
+    boolean matched;
+    private Tuple prevOuterTuple;
 
     public NestedLoopJoinNode(PlanNode leftChild, PlanNode rightChild,
                 JoinType joinType, Expression predicate) {
-
         super(leftChild, rightChild, joinType, predicate);
     }
 
@@ -161,10 +163,11 @@ public class NestedLoopJoinNode extends ThetaJoinNode {
         super.initialize();
 
         done = false;
-        leftTuple = null;
-        rightTuple = null;
+        matched = false;
+        prevOuterTuple = null;
+        outerTuple = null;
+        innerTuple = null;
     }
-
 
     /**
      * Returns the next joined tuple that satisfies the join condition.
@@ -178,8 +181,20 @@ public class NestedLoopJoinNode extends ThetaJoinNode {
             return null;
 
         while (getTuplesToJoin()) {
-            if (canJoinTuples())
-                return joinTuples(leftTuple, rightTuple);
+            if (innerTuple == null) {
+                if (isOuterJoin() && !matched) {
+                    matched = false;
+                    return joinTuplesPadNull(prevOuterTuple);
+                } else {
+                    matched = false;
+                    continue;
+                }
+            }
+
+            if (canJoinTuples()) {
+                matched = true;
+                return joinTuples(outerTuple, innerTuple);
+            }
         }
 
         return null;
@@ -187,26 +202,46 @@ public class NestedLoopJoinNode extends ThetaJoinNode {
 
 
     /**
-     * This helper function implements the logic that sets {@link #leftTuple}
-     * and {@link #rightTuple} based on the nested-loop logic.
+     * This helper function implements the logic that sets {@link #outerTuple}
+     * and {@link #innerTuple} based on the nested-loop logic.
      *
      * @return {@code true} if another pair of tuples was found to join, or
      *         {@code false} if no more pairs of tuples are available to join.
      */
     private boolean getTuplesToJoin() throws IOException {
-        // TODO:  Implement
-        return false;
+        if (outerTuple == null && (outerTuple = getNextOuterTuple()) == null) {
+            done = true;
+            return false;
+        }
+
+        innerTuple = getNextInnerTuple();
+        if (innerTuple == null) {
+            prevOuterTuple = outerTuple;
+            if ((outerTuple = getNextOuterTuple()) == null) {
+                done = true;
+                return false;
+            }
+            initializeInnerTuple();
+            return true;
+        }
+
+        return true;
     }
 
 
     private boolean canJoinTuples() {
-        // If the predicate was not set, we can always join them!
-        if (predicate == null)
-            return true;
+        if (isOuterJoin()) {
+            if (predicate == null) {
+                return hasEqualColumnsAndEqualValues(innerTuple, outerTuple);
+            }
+        } else {
+            if (predicate == null)
+                return true;
+        }
 
         environment.clear();
-        environment.addTuple(leftSchema, leftTuple);
-        environment.addTuple(rightSchema, rightTuple);
+        environment.addTuple(leftSchema, outerTuple);
+        environment.addTuple(rightSchema, innerTuple);
 
         return predicate.evaluatePredicate(environment);
     }
@@ -226,6 +261,35 @@ public class NestedLoopJoinNode extends ThetaJoinNode {
         //        (Just haven't gotten around to implementing this.)
     }
 
+    private Tuple getNextInnerTuple() throws IOException {
+        if (joinType == JoinType.LEFT_OUTER) {
+            return rightChild.getNextTuple();
+        } else if (joinType == JoinType.RIGHT_OUTER) {
+            return leftChild.getNextTuple();
+        } else {
+            return rightChild.getNextTuple();
+        }
+    }
+
+    private Tuple getNextOuterTuple() throws IOException {
+        if (joinType == JoinType.LEFT_OUTER) {
+            return leftChild.getNextTuple();
+        } else if (joinType == JoinType.RIGHT_OUTER) {
+            return rightChild.getNextTuple();
+        } else {
+            return leftChild.getNextTuple();
+        }
+    }
+
+    private void initializeInnerTuple() {
+        if (joinType == JoinType.LEFT_OUTER) {
+            rightChild.initialize();
+        } else if (joinType == JoinType.RIGHT_OUTER) {
+            leftChild.initialize();
+        } else {
+            rightChild.initialize();
+        }
+    }
 
     public void cleanUp() {
         leftChild.cleanUp();

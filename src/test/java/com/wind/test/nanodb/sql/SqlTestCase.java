@@ -38,7 +38,7 @@ import com.wind.nanodb.storage.StorageManager;
 public class SqlTestCase {
 
     public static final String TEST_SQL_PROPS =
-        "com/wind/test/nanodb/sql/test_sql.props";
+        "test_sql.props";
 
 
     protected NanoDBServer server;
