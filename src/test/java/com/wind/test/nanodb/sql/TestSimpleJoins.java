@@ -8,6 +8,7 @@ import com.wind.nanodb.server.CommandResult;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Set;
 
 
 /**
@@ -37,6 +38,7 @@ public class TestSimpleJoins extends SqlTestCase {
             new TupleLiteral(7, 20, 2),
             new TupleLiteral(5, null, 3),
             new TupleLiteral(100, 30, 4),
+            new TupleLiteral(2, 20, 7),
             new TupleLiteral(2, 20, 4),
     };
 
@@ -113,7 +115,7 @@ public class TestSimpleJoins extends SqlTestCase {
         for (int i = 0; i < table1.length; ++i) {
             for (int j = 0; j < table2.length; ++j) {
                 if (table1[i].getColumnValue(1) != null &&
-                        table1[i].getColumnValue(1) == table2[j].getColumnValue(1)) {
+                        table1[i].getColumnValue(1).equals(table2[j].getColumnValue(1))) {
                     TupleLiteral tuple = new TupleLiteral();
                     tuple.appendTuple(table1[i]);
                     tuple.appendTuple(table2[j]);
@@ -133,16 +135,45 @@ public class TestSimpleJoins extends SqlTestCase {
         assert checkUnorderedResults(expected, result);
     }
 
+    private boolean equal(Tuple a, Tuple b, int... columnsToCheck) {
+        for (int column: columnsToCheck) {
+            if (a.getColumnValue(column) == null || b.getColumnValue(column) == null) {
+                return false;
+            }
+            if (a.getColumnValue(column) != b.getColumnValue(column)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Test
     public void testLeftOuterJoin() throws Throwable {
-        TupleLiteral[] expected = {
-                new TupleLiteral(0, null, 2, null),
-                new TupleLiteral(1, 10, 4, null),
-                new TupleLiteral(2, 20, 7, 4),
-                new TupleLiteral(3, 30, 1, null),
-                new TupleLiteral(4, null, 5, null),
-                new TupleLiteral(7, 20, 5, 2),
-        };
+        ArrayList<TupleLiteral> arr = new ArrayList<>();
+        for (int i = 0; i < table1.length; ++i) {
+            boolean matched = false;
+            for (int j = 0; j < table2.length; ++j) {
+                if (equal(table1[i], table2[j], 0, 1)) {
+                    TupleLiteral tuple = new TupleLiteral();
+                    tuple.appendTuple(table1[i]);
+                    tuple.appendTuple(table2[j]);
+                    arr.add(tuple);
+                    matched = true;
+                }
+            }
+            if (!matched) {
+                TupleLiteral tuple = new TupleLiteral(table1[i]);
+                for (int x = 0; x < table2[0].getColumnCount(); x++) {
+                    tuple.addValue(null);
+                }
+                arr.add(tuple);
+            }
+        }
+
+        TupleLiteral[] expected = new TupleLiteral[arr.size()];
+        for (int i = 0; i < arr.size(); ++i) {
+            expected[i] = arr.get(i);
+        }
 
         CommandResult result = server.doCommand(
                 "SELECT * FROM test_simple_joins_1 LEFT OUTER JOIN test_simple_joins_2", true);
@@ -151,15 +182,31 @@ public class TestSimpleJoins extends SqlTestCase {
 
     @Test
     public void testRightOuterJoin() throws Throwable {
-        TupleLiteral[] expected = {
-                new TupleLiteral(0, null, 6, null),
-                new TupleLiteral(3, 5, 8, null),
-                new TupleLiteral(4, 15, 10, null),
-                new TupleLiteral(7, 20, 2, 5),
-                new TupleLiteral(5, null, 3, null),
-                new TupleLiteral(100, 30, 4, null),
-                new TupleLiteral(2, 20, 4, 7),
-        };
+        ArrayList<TupleLiteral> arr = new ArrayList<>();
+        for (int i = 0; i < table2.length; ++i) {
+            boolean matched = false;
+            for (int j = 0; j < table1.length; ++j) {
+                if (equal(table2[i], table1[j], 0, 1)) {
+                    TupleLiteral tuple = new TupleLiteral();
+                    tuple.appendTuple(table2[i]);
+                    tuple.appendTuple(table1[j]);
+                    arr.add(tuple);
+                    matched = true;
+                }
+            }
+            if (!matched) {
+                TupleLiteral tuple = new TupleLiteral(table2[i]);
+                for (int x = 0; x < table1[0].getColumnCount(); x++) {
+                    tuple.addValue(null);
+                }
+                arr.add(tuple);
+            }
+        }
+
+        TupleLiteral[] expected = new TupleLiteral[arr.size()];
+        for (int i = 0; i < arr.size(); ++i) {
+            expected[i] = arr.get(i);
+        }
 
         CommandResult result = server.doCommand(
                 "SELECT * FROM test_simple_joins_1 RIGHT OUTER JOIN test_simple_joins_2", true);
@@ -167,4 +214,53 @@ public class TestSimpleJoins extends SqlTestCase {
     }
 
 
+    @Test
+    public void testCrossJoinWithWhereClause() throws Throwable {
+        ArrayList<TupleLiteral> arr = new ArrayList<>();
+        for (int i = 0; i < table1.length; ++i) {
+            for (int j = 0; j < table2.length; ++j) {
+                if (equal(table1[i], table2[j], 2)) {
+                    TupleLiteral tuple = new TupleLiteral();
+                    tuple.appendTuple(table1[i]);
+                    tuple.appendTuple(table2[j]);
+                    arr.add(tuple);
+                }
+            }
+        }
+
+        TupleLiteral[] expected = new TupleLiteral[arr.size()];
+        for (int i = 0; i < arr.size(); ++i) {
+            expected[i] = arr.get(i);
+        }
+
+        CommandResult result = server.doCommand(
+                "SELECT * FROM test_simple_joins_1, test_simple_joins_2 " +
+                "WHERE test_simple_joins_1.c = test_simple_joins_2.d", true);
+        assert checkUnorderedResults(expected, result);
+    }
+
+    @Test
+    public void testRightOuterJoinWithWhereClause() throws Throwable {
+        ArrayList<TupleLiteral> arr = new ArrayList<>();
+        for (int i = 0; i < table1.length; ++i) {
+            for (int j = 0; j < table2.length; ++j) {
+                if (equal(table1[i], table2[j], 0, 1, 2)) {
+                    TupleLiteral tuple = new TupleLiteral();
+                    tuple.appendTuple(table1[i]);
+                    tuple.appendTuple(table2[j]);
+                    arr.add(tuple);
+                }
+            }
+        }
+
+        TupleLiteral[] expected = new TupleLiteral[arr.size()];
+        for (int i = 0; i < arr.size(); ++i) {
+            expected[i] = arr.get(i);
+        }
+
+        CommandResult result = server.doCommand(
+                "SELECT * FROM test_simple_joins_1 RIGHT OUTER JOIN test_simple_joins_2 "
+                + "WHERE test_simple_joins_1.c = test_simple_joins_2.d", true);
+        assert checkUnorderedResults(expected, result);
+    }
 }

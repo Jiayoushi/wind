@@ -184,7 +184,7 @@ public class NestedLoopJoinNode extends ThetaJoinNode {
             if (innerTuple == null) {
                 if (isOuterJoin() && !matched) {
                     matched = false;
-                    return joinTuplesPadNull(prevOuterTuple);
+                    return joinTuplesPadNull(prevOuterTuple, prevOuterTuple.getColumnCount());
                 } else {
                     matched = false;
                     continue;

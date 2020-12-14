@@ -102,10 +102,6 @@ public abstract class ThetaJoinNode extends PlanNode {
         if (joinType == JoinType.SEMIJOIN || joinType == JoinType.ANTIJOIN)
             throw new UnsupportedOperationException("Not yet implemented!");
 
-        if (joinType == JoinType.LEFT_OUTER || joinType == JoinType.RIGHT_OUTER) {
-            return joinTuplesWithoutDuplicateColumns(left, right);
-        }
-
         TupleLiteral joinedTuple = new TupleLiteral();
         // appendTuple() also copies schema information from the source tuples.
 
@@ -143,34 +139,17 @@ public abstract class ThetaJoinNode extends PlanNode {
         return true;
     }
 
-    protected Tuple joinTuplesPadNull(Tuple left) {
+    protected Tuple joinTuplesPadNull(Tuple left, int nullCount) {
         //System.out.println(String.format("[%s] [%s] [%b]\n", left.toString(), right.toString(), abortIfNotEqual));
 
         TupleLiteral joinedTuple = new TupleLiteral();
         joinedTuple.appendTuple(left);
 
-        Set<String> commonColumnNames = leftSchema.getCommonColumnNames(rightSchema);
-        int count = rightSchema.getColumnInfos().size() - commonColumnNames.size();
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < nullCount; ++i) {
             joinedTuple.addValue(null);
         }
         return joinedTuple;
     }
-
-    protected Tuple joinTuplesWithoutDuplicateColumns(Tuple left, Tuple right) {
-        TupleLiteral joinedTuple = new TupleLiteral();
-        joinedTuple.appendTuple(left);
-
-        Set<String> commonColumnNames = leftSchema.getCommonColumnNames(rightSchema);
-        for (int i = 0; i < right.getColumnCount(); ++i) {
-            String columnName = rightSchema.getColumnInfo(i).getName();
-            if (!commonColumnNames.contains(columnName)) {
-                joinedTuple.addValue(right.getColumnValue(i));
-            }
-        }
-        return joinedTuple;
-    }
-
 
     /**
      * Do initialization for the join operation. Resets state variables.

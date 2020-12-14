@@ -52,7 +52,7 @@ public class SimplePlanner extends AbstractPlannerImpl {
         FromClause fromClause = selectClause.getFromClause();
         if (!fromClause.isBaseTable()) {
             if (fromClause.getClauseType() == FromClause.ClauseType.JOIN_EXPR) {
-                planNode = makeJoin(fromClause.getLeftChild().getTableName(),
+                planNode = makeCrossJoin(fromClause.getLeftChild().getTableName(),
                         fromClause.getRightChild().getTableName(), fromClause.getJoinType(),
                         fromClause.getOnExpression());
             } else {
@@ -65,6 +65,16 @@ public class SimplePlanner extends AbstractPlannerImpl {
                     selectClause.getWhereExpr(), null);
         }
 
+        // Where
+        if (selectClause.getWhereExpr() != null) {
+            planNode = PlanUtils.addPredicateToPlan(planNode, selectClause.getWhereExpr());
+            planNode.prepare();
+        }
+
+        //assert(selectClause.getWhereExpr() == null);
+
+        //if (selectClause.getWhereExpr())
+
         // Project
         if (!selectClause.isTrivialProject()) {
             planNode = new ProjectNode(planNode, selectClause.getSelectValues());
@@ -73,7 +83,7 @@ public class SimplePlanner extends AbstractPlannerImpl {
         return planNode;
     }
 
-    private PlanNode makeJoin(String tableName1, String tableName2, JoinType joinType,
+    private PlanNode makeCrossJoin(String tableName1, String tableName2, JoinType joinType,
                                    Expression predicate) throws IOException {
         TableInfo tableInfo1 = storageManager.getTableManager().openTable(tableName1);
         TableInfo tableInfo2 = storageManager.getTableManager().openTable(tableName2);
@@ -85,6 +95,15 @@ public class SimplePlanner extends AbstractPlannerImpl {
         PlanNode planNode = new NestedLoopJoinNode(selectNode1, selectNode2, joinType, predicate);
         planNode.prepare();
         return planNode;
+    }
+
+    private ProjectNode makeSelectProject(String tableName, Expression predicate,
+                                          List<SelectClause> enclosingSelects,
+                                          List<SelectValue> selectValues) throws IOException {
+        SelectNode selectNode = makeSimpleSelect(tableName, predicate, enclosingSelects);
+        ProjectNode projectNode = new ProjectNode(selectNode, selectValues);
+        projectNode.prepare();
+        return projectNode;
     }
 
     /**
