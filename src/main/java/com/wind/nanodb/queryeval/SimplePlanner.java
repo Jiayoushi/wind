@@ -2,6 +2,7 @@ package com.wind.nanodb.queryeval;
 
 
 import com.wind.nanodb.expressions.Expression;
+import com.wind.nanodb.expressions.OrderByExpression;
 import com.wind.nanodb.plannodes.*;
 import com.wind.nanodb.queryast.FromClause;
 import com.wind.nanodb.queryast.SelectClause;
@@ -50,6 +51,7 @@ public class SimplePlanner extends AbstractPlannerImpl {
         PlanNode planNode = null;
 
         FromClause fromClause = selectClause.getFromClause();
+        // Join
         if (!fromClause.isBaseTable()) {
             if (fromClause.getClauseType() == FromClause.ClauseType.JOIN_EXPR) {
                 planNode = makeCrossJoin(fromClause.getLeftChild().getTableName(),
@@ -59,27 +61,27 @@ public class SimplePlanner extends AbstractPlannerImpl {
                 throw new UnsupportedOperationException(
                         "Not implemented:  subqueries in FROM clause");
             }
+            // Where
+            if (selectClause.getWhereExpr() != null) {
+                planNode = PlanUtils.addPredicateToPlan(planNode, selectClause.getWhereExpr());
+            }
         } else {
             // Basic select
             planNode = makeSimpleSelect(fromClause.getTableName(),
                     selectClause.getWhereExpr(), null);
         }
 
-        // Where
-        if (selectClause.getWhereExpr() != null) {
-            planNode = PlanUtils.addPredicateToPlan(planNode, selectClause.getWhereExpr());
-            planNode.prepare();
+        // Order By
+        if (selectClause.getOrderByExprs().size() != 0) {
+            planNode = new SortNode(planNode, selectClause.getOrderByExprs());
         }
-
-        //assert(selectClause.getWhereExpr() == null);
-
-        //if (selectClause.getWhereExpr())
 
         // Project
         if (!selectClause.isTrivialProject()) {
             planNode = new ProjectNode(planNode, selectClause.getSelectValues());
         }
 
+        planNode.prepare();
         return planNode;
     }
 

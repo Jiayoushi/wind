@@ -8,7 +8,8 @@ import com.wind.nanodb.server.CommandResult;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Set;
+import java.util.Collections;
+import java.util.Comparator;
 
 
 /**
@@ -213,7 +214,6 @@ public class TestSimpleJoins extends SqlTestCase {
         assert checkUnorderedResults(expected, result);
     }
 
-
     @Test
     public void testCrossJoinWithWhereClause() throws Throwable {
         ArrayList<TupleLiteral> arr = new ArrayList<>();
@@ -262,5 +262,55 @@ public class TestSimpleJoins extends SqlTestCase {
                 "SELECT * FROM test_simple_joins_1 RIGHT OUTER JOIN test_simple_joins_2 "
                 + "WHERE test_simple_joins_1.c = test_simple_joins_2.d", true);
         assert checkUnorderedResults(expected, result);
+    }
+
+    @Test
+    public void testLeftOuterJoinWithOrderBy() throws Throwable {
+        ArrayList<TupleLiteral> arr = new ArrayList<>();
+        for (int i = 0; i < table1.length; ++i) {
+            boolean matched = false;
+            for (int j = 0; j < table2.length; ++j) {
+                if (equal(table1[i], table2[j], 0, 1)) {
+                    TupleLiteral tuple = new TupleLiteral();
+                    tuple.appendTuple(table1[i]);
+                    tuple.appendTuple(table2[j]);
+                    arr.add(tuple);
+                    matched = true;
+                }
+            }
+            if (!matched) {
+                TupleLiteral tuple = new TupleLiteral(table1[i]);
+                for (int x = 0; x < table2[0].getColumnCount(); x++) {
+                    tuple.addValue(null);
+                }
+                arr.add(tuple);
+            }
+        }
+
+        Collections.sort(arr, new Comparator<TupleLiteral>() {
+            @Override
+            public int compare(TupleLiteral t1, TupleLiteral t2) {
+                Object v1 = t1.getColumnValue(0);
+                Object v2 = t2.getColumnValue(0);
+                if (v1 == null) {
+                    return -1;
+                } else if (v2 == null) {
+                    return 1;
+                } else {
+                    return (Integer)t1.getColumnValue(0) - (Integer)t2.getColumnValue(0);
+                }
+            }
+        });
+
+        TupleLiteral[] expected = new TupleLiteral[arr.size()];
+        for (int i = 0; i < arr.size(); ++i) {
+            expected[i] = arr.get(i);
+        }
+
+        CommandResult result = server.doCommand(
+                "SELECT *" +
+                        " FROM test_simple_joins_1 LEFT OUTER JOIN test_simple_joins_2" +
+                        " ORDER BY test_simple_joins_1.a", true);
+        assert checkOrderedResults(expected, result);
     }
 }
