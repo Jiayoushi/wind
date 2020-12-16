@@ -50,28 +50,18 @@ public class SimplePlanner extends AbstractPlannerImpl {
 
         PlanNode planNode = null;
 
+        // From
         FromClause fromClause = selectClause.getFromClause();
-        // Join
-        if (!fromClause.isBaseTable()) {
-            if (fromClause.getClauseType() == FromClause.ClauseType.JOIN_EXPR) {
-                planNode = makeCrossJoin(fromClause.getLeftChild().getTableName(),
-                        fromClause.getRightChild().getTableName(), fromClause.getJoinType(),
-                        fromClause.getOnExpression());
-            } else {
-                throw new UnsupportedOperationException(
-                        "Not implemented:  subqueries in FROM clause");
-            }
-            // Where
-            if (selectClause.getWhereExpr() != null) {
-                planNode = PlanUtils.addPredicateToPlan(planNode, selectClause.getWhereExpr());
-            }
-        } else {
-            // Basic select
-            planNode = makeSimpleSelect(fromClause.getTableName(),
-                    selectClause.getWhereExpr(), null);
+        planNode = generateFromClausePlan(fromClause);
+
+        // Where
+        if (selectClause.getWhereExpr() != null) {
+            planNode = PlanUtils.addPredicateToPlan(planNode, selectClause.getWhereExpr());
         }
 
-        // Order By
+        // Group by and aggregation
+
+        // Order by
         if (selectClause.getOrderByExprs().size() != 0) {
             planNode = new SortNode(planNode, selectClause.getOrderByExprs());
         }
@@ -82,6 +72,39 @@ public class SimplePlanner extends AbstractPlannerImpl {
         }
 
         planNode.prepare();
+        return planNode;
+    }
+
+    private PlanNode generateFromClausePlan(FromClause fromClause) throws IOException {
+        PlanNode planNode = null;
+
+        if (fromClause.isBaseTable()) {
+            TableInfo tableInfo = storageManager.getTableManager().openTable(fromClause.getTableName());
+            planNode = new FileScanNode(tableInfo, null);
+            return planNode;
+        }
+
+        if (fromClause.getClauseType() == FromClause.ClauseType.JOIN_EXPR) {
+            FromClause left = fromClause.getLeftChild();
+            FromClause right = fromClause.getRightChild();
+
+            planNode = new NestedLoopJoinNode(generateFromClausePlan(left),
+                    generateFromClausePlan(right), fromClause.getJoinType(), fromClause.getOnExpression());
+
+            //planNode = new NestedLoopJoinNode(generateFromClausePlan(), selectNode2, joinType, predicate);
+
+            //System.out.printf(">>>>>>>>>>>> %s %s\n", fromClause.getLeftChild().getSelectClause().toString(),
+            //        fromClause.getRightChild().getSelectClause().toString());
+
+            //planNode = makeCrossJoin(fromClause.getLeftChild().getTableName(),
+            //        fromClause.getRightChild().getTableName(), fromClause.getJoinType(),
+            //        fromClause.getOnExpression());
+        } else if (fromClause.getClauseType() == FromClause.ClauseType.SELECT_SUBQUERY) {
+            planNode = makePlan(fromClause.getSelectClause(), null);
+        } else {
+            throw new UnsupportedOperationException("Not implemented");
+        }
+
         return planNode;
     }
 
@@ -97,15 +120,6 @@ public class SimplePlanner extends AbstractPlannerImpl {
         PlanNode planNode = new NestedLoopJoinNode(selectNode1, selectNode2, joinType, predicate);
         planNode.prepare();
         return planNode;
-    }
-
-    private ProjectNode makeSelectProject(String tableName, Expression predicate,
-                                          List<SelectClause> enclosingSelects,
-                                          List<SelectValue> selectValues) throws IOException {
-        SelectNode selectNode = makeSimpleSelect(tableName, predicate, enclosingSelects);
-        ProjectNode projectNode = new ProjectNode(selectNode, selectValues);
-        projectNode.prepare();
-        return projectNode;
     }
 
     /**

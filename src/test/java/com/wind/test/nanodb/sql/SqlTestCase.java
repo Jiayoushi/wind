@@ -485,4 +485,36 @@ public class SqlTestCase {
             System.out.println(t);
         }
     }
+
+    protected boolean equal(Tuple a, Tuple b, int... columnsToCheck) {
+        for (int column: columnsToCheck) {
+            if (a.getColumnValue(column) == null || b.getColumnValue(column) == null) {
+                return false;
+            }
+            if (a.getColumnValue(column) != b.getColumnValue(column)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    protected TupleLiteral[] tupleListToArray(List<TupleLiteral> list) {
+        TupleLiteral[] arr = new TupleLiteral[list.size()];
+        for (int i = 0; i < list.size(); ++i) {
+            arr[i] = list.get(i);
+        }
+        return arr;
+    }
+
+    protected int compareTuple(TupleLiteral t1, TupleLiteral t2, int columnIndex) {
+        Object v1 = t1.getColumnValue(columnIndex);
+        Object v2 = t2.getColumnValue(columnIndex);
+        if (v1 == null) {
+            return -1;
+        } else if (v2 == null) {
+            return 1;
+        } else {
+            return (Integer)t1.getColumnValue(columnIndex) - (Integer)t2.getColumnValue(columnIndex);
+        }
+    }
 }
