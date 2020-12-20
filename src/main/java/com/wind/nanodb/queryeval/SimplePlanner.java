@@ -1,8 +1,7 @@
 package com.wind.nanodb.queryeval;
 
 
-import com.wind.nanodb.expressions.Expression;
-import com.wind.nanodb.expressions.OrderByExpression;
+import com.wind.nanodb.expressions.*;
 import com.wind.nanodb.plannodes.*;
 import com.wind.nanodb.queryast.FromClause;
 import com.wind.nanodb.queryast.SelectClause;
@@ -14,6 +13,7 @@ import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -50,6 +50,20 @@ public class SimplePlanner extends AbstractPlannerImpl {
 
         PlanNode planNode = null;
 
+        AggregateProcessor aggregateProcessor = new AggregateProcessor();
+        for (SelectValue sv: selectClause.getSelectValues()) {
+            // Skip select-values that aren't expressions
+            if (!sv.isExpression()) {
+                continue;
+            }
+            Expression exp = sv.getExpression().traverse(aggregateProcessor);
+            sv.setExpression(exp);
+        }
+
+        for (String key: aggregateProcessor.getAggregates().keySet()) {
+            System.out.printf("KEY:%s VALUE:%s\n", key, aggregateProcessor.getAggregates().get(key));
+        }
+
         // From
         FromClause fromClause = selectClause.getFromClause();
         planNode = generateFromClausePlan(fromClause);
@@ -60,6 +74,9 @@ public class SimplePlanner extends AbstractPlannerImpl {
         }
 
         // Group by and aggregation
+        if (!selectClause.getGroupByExprs().isEmpty() || aggregateProcessor.hasAggregates()) {
+            planNode = handleGroupingAndAggregation(planNode, selectClause, aggregateProcessor);
+        }
 
         // Order by
         if (selectClause.getOrderByExprs().size() != 0) {
@@ -75,50 +92,37 @@ public class SimplePlanner extends AbstractPlannerImpl {
         return planNode;
     }
 
+
+    private PlanNode handleGroupingAndAggregation(PlanNode planNode, SelectClause selectClause,
+                                                  AggregateProcessor processor) {
+        /**
+         * The SELECT and HAVING expressions must be scanned for aggregate expressions so that the grouping plan-node
+         * can be initialized correctly, and also so that the aggregates may be removed and replaced with
+         * placeholder variables.
+         */
+        return new HashedGroupAggregateNode(planNode, selectClause.getGroupByExprs(), processor.getAggregates());
+    }
+
     private PlanNode generateFromClausePlan(FromClause fromClause) throws IOException {
         PlanNode planNode = null;
 
         if (fromClause.isBaseTable()) {
             TableInfo tableInfo = storageManager.getTableManager().openTable(fromClause.getTableName());
             planNode = new FileScanNode(tableInfo, null);
-            return planNode;
-        }
-
-        if (fromClause.getClauseType() == FromClause.ClauseType.JOIN_EXPR) {
-            FromClause left = fromClause.getLeftChild();
-            FromClause right = fromClause.getRightChild();
-
-            planNode = new NestedLoopJoinNode(generateFromClausePlan(left),
-                    generateFromClausePlan(right), fromClause.getJoinType(), fromClause.getOnExpression());
-
-            //planNode = new NestedLoopJoinNode(generateFromClausePlan(), selectNode2, joinType, predicate);
-
-            //System.out.printf(">>>>>>>>>>>> %s %s\n", fromClause.getLeftChild().getSelectClause().toString(),
-            //        fromClause.getRightChild().getSelectClause().toString());
-
-            //planNode = makeCrossJoin(fromClause.getLeftChild().getTableName(),
-            //        fromClause.getRightChild().getTableName(), fromClause.getJoinType(),
-            //        fromClause.getOnExpression());
+        } else if (fromClause.getClauseType() == FromClause.ClauseType.JOIN_EXPR) {
+            planNode = new NestedLoopJoinNode(generateFromClausePlan(fromClause.getLeftChild()),
+                    generateFromClausePlan(fromClause.getRightChild()),
+                    fromClause.getJoinType(), fromClause.getOnExpression());
         } else if (fromClause.getClauseType() == FromClause.ClauseType.SELECT_SUBQUERY) {
             planNode = makePlan(fromClause.getSelectClause(), null);
         } else {
             throw new UnsupportedOperationException("Not implemented");
         }
 
-        return planNode;
-    }
+        if (fromClause.isRenamed()) {
+            planNode = new RenameNode(planNode, fromClause.getResultName());
+        }
 
-    private PlanNode makeCrossJoin(String tableName1, String tableName2, JoinType joinType,
-                                   Expression predicate) throws IOException {
-        TableInfo tableInfo1 = storageManager.getTableManager().openTable(tableName1);
-        TableInfo tableInfo2 = storageManager.getTableManager().openTable(tableName2);
-        SelectNode selectNode1 = new FileScanNode(tableInfo1, null);
-        SelectNode selectNode2 = new FileScanNode(tableInfo2, null);
-        selectNode1.prepare();
-        selectNode2.prepare();
-
-        PlanNode planNode = new NestedLoopJoinNode(selectNode1, selectNode2, joinType, predicate);
-        planNode.prepare();
         return planNode;
     }
 

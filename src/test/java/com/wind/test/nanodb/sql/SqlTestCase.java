@@ -306,7 +306,7 @@ public class SqlTestCase {
             Tuple e = expected[i];
 
             // The expected and actual tuples don't match.
-            if (!TupleComparator.areTuplesEqual(e, a, 0.0001)) {
+            if (!TupleComparator.areTuplesEqual(e, a, 0.1)) {
                 System.out.println(e + " (expected) and " + a + " (actual) don't match.");
                 return false;
             }

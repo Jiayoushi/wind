@@ -3,6 +3,7 @@ package com.wind.test.nanodb.sql;
 
 import com.wind.nanodb.expressions.TupleLiteral;
 import com.wind.nanodb.server.CommandResult;
+import org.junit.Test;
 
 /**
 * This class exercises the database with both grouping and aggregation
@@ -20,6 +21,7 @@ public class TestGroupingAndAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testTableNotEmpty() throws Throwable {
         testTableNotEmpty("test_group_aggregate_b");
     }
@@ -30,6 +32,7 @@ public class TestGroupingAndAggregation extends SqlTestCase {
     * 
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testSimpleGroupingAndAggregation() throws Throwable {
         CommandResult result;
         
@@ -201,6 +204,7 @@ public class TestGroupingAndAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testComplexGroupingSimpleAggregation() throws Throwable {
         CommandResult result;
         
@@ -304,6 +308,7 @@ public class TestGroupingAndAggregation extends SqlTestCase {
     *
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testAggregationMultipleGroups() throws Throwable {
         CommandResult result;
         
@@ -448,6 +453,7 @@ public class TestGroupingAndAggregation extends SqlTestCase {
     * 
     * @throws Exception if any query parsing or execution issues occur.
     **/
+    @Test
     public void testWithOtherCommands() throws Throwable {
         CommandResult result;
         
@@ -473,7 +479,7 @@ public class TestGroupingAndAggregation extends SqlTestCase {
         };
         assert checkSizeResults(expected1, result);
         assert checkUnorderedResults(expected1, result);
-        
+
         result = server.doCommand(
             "SELECT branch_name, MAX(balance) FROM test_group_aggregate_b GROUP BY branch_name ORDER BY branch_name", true);
         TupleLiteral[] expected2 = {
@@ -505,15 +511,16 @@ public class TestGroupingAndAggregation extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
+    @Test
     public void testComplicatedGroupingAndAggregation() throws Throwable {
         CommandResult result;
-        
+
         result = server.doCommand(
             "SELECT a + MIN(b) FROM test_complicated_group_aggregation GROUP BY a", true);
         TupleLiteral[] expected = {
-            new TupleLiteral(             24.5 ),
-            new TupleLiteral( 25.7999992370605 ),
-            new TupleLiteral(             26.5 )
+            new TupleLiteral(24.5 ),
+            new TupleLiteral(26.5 ),
+            new TupleLiteral(25.8),
         };
         assert checkSizeResults(expected, result);
         assert checkUnorderedResults(expected, result);

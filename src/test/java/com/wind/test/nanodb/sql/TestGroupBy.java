@@ -3,6 +3,7 @@ package com.wind.test.nanodb.sql;
 
 import com.wind.nanodb.expressions.TupleLiteral;
 import com.wind.nanodb.server.CommandResult;
+import org.junit.Test;
 
 /**
 * This class exercises the database with some grouping statements against many
@@ -236,6 +237,7 @@ public class TestGroupBy extends SqlTestCase {
     *
     * @throws Exception is any query parsing or execution issues occur.
     **/
+    @Test
     public void testGroupByTwoColumnTypes() throws Throwable {
         CommandResult result;
 

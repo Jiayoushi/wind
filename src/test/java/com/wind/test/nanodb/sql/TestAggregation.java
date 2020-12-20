@@ -22,6 +22,7 @@ public class TestAggregation extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      **/
+    @Test
     public void testAggregationTableNotEmpty() throws Throwable {
         testTableNotEmpty("test_aggregate");
     }
@@ -246,7 +247,7 @@ public class TestAggregation extends SqlTestCase {
         TupleLiteral[] expected1 = {
             createTupleFromNum( 16 )
         };
-System.err.println("RESULT TUPLES = " + result.getTuples());
+        System.err.println("RESULT TUPLES = " + result.getTuples());
         assert checkSizeResults(expected1, result);
         assert checkOrderedResults(expected1, result);
 
