@@ -4,11 +4,15 @@ package com.wind.nanodb.storage.heapfile;
 import java.io.EOFException;
 import java.io.IOException;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.wind.nanodb.queryeval.ColumnStats;
+import com.wind.nanodb.queryeval.ColumnStatsCollector;
 import com.wind.nanodb.queryeval.TableStats;
+import com.wind.nanodb.relations.ColumnInfo;
 import com.wind.nanodb.relations.TableSchema;
 import com.wind.nanodb.relations.Tuple;
 import org.apache.log4j.Logger;
@@ -21,6 +25,7 @@ import com.wind.nanodb.storage.InvalidFilePointerException;
 import com.wind.nanodb.storage.PageTuple;
 import com.wind.nanodb.storage.StorageManager;
 import com.wind.nanodb.storage.TupleFileManager;
+import sun.awt.X11.XSystemTrayPeer;
 
 
 /**
@@ -426,8 +431,63 @@ page_scan:  // So we can break out of the outer loop from inside the inner loop.
 
     @Override
     public void analyze() throws IOException {
-        // TODO:  Complete this implementation.
-        throw new UnsupportedOperationException("Not yet implemented!");
+        int columnCount = schema.getColumnInfos().size();
+
+        ColumnStatsCollector[] columnStatsCollectors = new ColumnStatsCollector[columnCount];
+        for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+            columnStatsCollectors[columnIndex] = new ColumnStatsCollector(
+                    schema.getColumnInfo(columnIndex).getType().getBaseType());
+        }
+
+        int dataPageCount = 0;
+        int tupleCount = 0;
+        int fileSize = 0;
+        for (int iPage = 1; /* nothing */ ; ++iPage) {
+            DBPage dbPage;
+            try {
+                dbPage = storageManager.loadDBPage(dbFile, iPage);
+            } catch (IOException e) {
+                break;
+            }
+            ++dataPageCount;
+
+            int numSlots = DataPage.getNumSlots(dbPage);
+            for (int iSlot = 0; iSlot < numSlots; iSlot++) {
+                int offset = DataPage.getSlotValue(dbPage, iSlot);
+                if (offset == DataPage.EMPTY_SLOT)
+                    continue;
+
+                Tuple tuple = new HeapFilePageTuple(schema, dbPage, iSlot, offset);
+                for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+                    columnStatsCollectors[columnIndex].addValue(tuple.getColumnValue(columnIndex));
+                }
+
+                ++tupleCount;
+            }
+            fileSize += DataPage.getTupleDataEnd(dbPage) - DataPage.getTupleDataStart(dbPage);
+        }
+
+        if (tupleCount == 0) {
+            return;
+        }
+
+        ArrayList<ColumnStats> columnStats = new ArrayList<>();
+        for (ColumnStatsCollector columnStatsCollector: columnStatsCollectors) {
+            columnStats.add(new ColumnStats(
+                    columnStatsCollector.getNumUniqueValues(),
+                    columnStatsCollector.getNumNullValues(),
+                    columnStatsCollector.getMinValue(),
+                    columnStatsCollector.getMaxValue()
+            ));
+            System.out.printf("MIN(%d) MAX(%d)\n",
+                    (Integer)columnStatsCollector.getMinValue(), (Integer)columnStatsCollector.getMaxValue());
+        }
+        System.out.println();
+
+        TableStats tableStats = new TableStats(dataPageCount, tupleCount,
+                (float)fileSize / tupleCount, columnStats);
+        this.stats = tableStats;
+        heapFileManager.saveMetadata(this);
     }
 
 

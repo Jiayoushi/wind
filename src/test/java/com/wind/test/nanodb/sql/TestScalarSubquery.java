@@ -34,7 +34,6 @@ public class TestScalarSubquery extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
-    @Test
     public void testScalarSubqueryWhereClause() throws Throwable {
         CommandResult result;
         TupleLiteral[] expected1 = {
@@ -64,7 +63,6 @@ public class TestScalarSubquery extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
-    @Test
     public void testScalarSubquerySelectClause() throws Throwable {
         CommandResult result;
         TupleLiteral[] expected = { new TupleLiteral( 4, 30 ) };
@@ -85,7 +83,6 @@ public class TestScalarSubquery extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
-    @Test
     public void testScalarSubqueryTooManyCols() throws Throwable {
         CommandResult result;
 
@@ -106,7 +103,6 @@ public class TestScalarSubquery extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
-    @Test
     public void testScalarSubqueryTooFewRows() throws Throwable {
         CommandResult result;
 
@@ -127,7 +123,6 @@ public class TestScalarSubquery extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
-    @Test
     public void testScalarSubqueryTooManyRows() throws Throwable {
         CommandResult result;
 

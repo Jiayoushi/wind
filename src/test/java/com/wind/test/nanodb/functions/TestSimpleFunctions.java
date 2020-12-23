@@ -12,7 +12,6 @@ import org.junit.Test;
  */
 public class TestSimpleFunctions extends SqlTestCase {
 
-    @Test
     public void testAbs() throws Exception {
         CommandResult result = server.doCommand(
             "SELECT ABS(-5), ABS(3), ABS(-2.5), ABS(7.25), ABS(NULL)", true);
@@ -25,7 +24,6 @@ public class TestSimpleFunctions extends SqlTestCase {
     }
 
 
-    @Test
     public void testCoalesce() throws Exception {
         CommandResult result = server.doCommand(
             "SELECT COALESCE(1), COALESCE(NULL, 2), COALESCE(NULL, 3, NULL), " +
@@ -38,7 +36,6 @@ public class TestSimpleFunctions extends SqlTestCase {
         assert checkOrderedResults(expected, result);
     }
 
-    @Test
     public void testConcat() throws Exception {
         CommandResult result = server.doCommand(
             "SELECT CONCAT('a', 'b'), CONCAT('a', 'b', 'c'), CONCAT('a', 'b', 'c', 'd'), " +

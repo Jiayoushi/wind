@@ -33,7 +33,6 @@ public class TestInPredicates extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
-    @Test
     public void testInValues() throws Throwable {
         CommandResult result;
         TupleLiteral[] expected1 = {
@@ -66,7 +65,6 @@ public class TestInPredicates extends SqlTestCase {
      *
      * @throws Exception if any query parsing or execution issues occur.
      */
-    @Test
     public void testInSubquery() throws Throwable {
         CommandResult result;
         TupleLiteral[] expected1 = {
