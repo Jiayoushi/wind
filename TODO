@@ -1,0 +1,5 @@
+1. pin/unpin
+2. join edge case
+3. Estimation for SimpleFilterNode, Join. Some stuff is not implemented in Estimator.
+4. change the way we estimate, how does MYSQL, postgresSQL estimate?
+5. 

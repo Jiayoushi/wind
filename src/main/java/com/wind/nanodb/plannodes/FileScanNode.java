@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.wind.nanodb.indexes.IndexInfo;
+import com.wind.nanodb.queryeval.PlanCost;
+import com.wind.nanodb.queryeval.SelectivityEstimator;
 import com.wind.nanodb.storage.FilePointer;
 import com.wind.nanodb.storage.InvalidFilePointerException;
 import com.wind.nanodb.storage.TupleFile;
@@ -221,16 +223,20 @@ public class FileScanNode extends SelectNode {
 
         schema = tupleFile.getSchema();
 
-        TableStats tableStats = tupleFile.getStats();
-        ArrayList<ColumnStats> fileStats = tableStats.getAllColumnStats();
-
-        // TODO:  Compute the cost of the plan node!
-        cost = null;
-
         // NOTE:  Normally we would also update the table statistics based on
         //        the predicate, but that's too complicated, so we'll leave
         //        them unchanged for now.
+        TableStats tableStats = tupleFile.getStats();
+        ArrayList<ColumnStats> fileStats = tableStats.getAllColumnStats();
         stats = fileStats;
+
+        cost = new PlanCost(tableStats.numTuples, tableStats.avgTupleSize, tableStats.numTuples, tableStats.numDataPages);
+
+        if (predicate != null) {
+            float selectivity = SelectivityEstimator.estimateSelectivity(predicate, schema, tableStats);
+            System.out.printf(">>>>> SELECTIVITY %f\n", selectivity);
+            cost.numTuples *= selectivity;
+        }
     }
 
 

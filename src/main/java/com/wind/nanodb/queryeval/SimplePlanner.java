@@ -60,10 +60,6 @@ public class SimplePlanner extends AbstractPlannerImpl {
             sv.setExpression(exp);
         }
 
-        for (String key: aggregateProcessor.getAggregates().keySet()) {
-            System.out.printf("KEY:%s VALUE:%s\n", key, aggregateProcessor.getAggregates().get(key));
-        }
-
         // From
         FromClause fromClause = selectClause.getFromClause();
         planNode = generateFromClausePlan(fromClause);

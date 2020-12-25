@@ -2,4 +2,5 @@ rm datafiles/* > out
 mvn compile >> out
 ./nanodb < schemas/stores/make-stores.sql >> out
 ./nanodb < schemas/stores/stores-10K.sql >> out
-./nanodb < scripts/show.sql > result
+#./nanodb < scripts/show.sql > result
+./nanodb < scripts/explain.sql > result

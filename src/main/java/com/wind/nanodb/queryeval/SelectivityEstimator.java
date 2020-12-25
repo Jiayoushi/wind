@@ -99,23 +99,23 @@ public class SelectivityEstimator {
      * @param exprSchema a schema describing the environment that the expression
      *        will be evaluated within
      *
-     * @param stats statistics that may be helpful in estimating the selectivity
+     * @param tableStats statistics that may be helpful in estimating the selectivity
      *
      * @return the estimated selectivity as a float
      */
     public static float estimateSelectivity(Expression expr, Schema exprSchema,
-                                            ArrayList<ColumnStats> stats) {
+                                            TableStats tableStats) {
         float selectivity = DEFAULT_SELECTIVITY;
 
         if (expr instanceof BooleanOperator) {
             // A Boolean AND, OR, or NOT operation.
             BooleanOperator bool = (BooleanOperator) expr;
-            selectivity = estimateBoolOperSelectivity(bool, exprSchema, stats);
+            selectivity = estimateBoolOperSelectivity(bool, exprSchema, tableStats);
         }
         else if (expr instanceof CompareOperator) {
             // This is a simple comparison between expressions.
             CompareOperator comp = (CompareOperator) expr;
-            selectivity = estimateCompareSelectivity(comp, exprSchema, stats);
+            selectivity = estimateCompareSelectivity(comp, exprSchema, tableStats);
         }
 
         return selectivity;
@@ -137,29 +137,31 @@ public class SelectivityEstimator {
      * @param exprSchema a schema specifying the environment that the expression
      *        will be evaluated within
      *
-     * @param stats a collection of column-statistics to use in making
-     *        selectivity estimates
+     * @param tableStats this table's stats to use in making selectivity estimates
      *
      * @return a selectivity estimate in the range [0, 1].
      */
     public static float estimateBoolOperSelectivity(BooleanOperator bool,
-        Schema exprSchema, ArrayList<ColumnStats> stats) {
+        Schema exprSchema, TableStats tableStats) {
 
         float selectivity = 1.0f;
 
         switch (bool.getType()) {
         case AND_EXPR:
-            // TODO:  Compute selectivity of AND expression.
+            for (int i = 0; i < bool.getNumTerms(); i++) {
+                selectivity *= estimateSelectivity(bool.getTerm(i), exprSchema, tableStats);
+            }
             break;
-
         case OR_EXPR:
-            // TODO:  Compute selectivity of OR expression.
+            selectivity = 0;
+            for (int i = 0; i < bool.getNumTerms(); i++) {
+                selectivity += estimateSelectivity(bool.getTerm(i), exprSchema, tableStats);
+            }
+            selectivity = Math.min(1.0f, selectivity);
             break;
-
         case NOT_EXPR:
             // TODO:  Compute selectivity of NOT expression.
             break;
-
         default:
             // Shouldn't have any other Boolean expression types.
             assert false : "Unexpected Boolean operator type:  " + bool.getType();
@@ -174,23 +176,22 @@ public class SelectivityEstimator {
 
     /**
      * This function computes a selectivity estimate for a general comparison
-     * operation.  The method examines the types of the arguments in the
-     * comparison and determines if it will be possible to make a reasonable
-     * guess as to the comparison's selectivity; if not then a default
-     * selectivity estimate is used.
+     * operation. For example, city_id > 30, city_id != 30. The method examines
+     * the types of the arguments in the comparison and determines if it will be
+     * possible to make a reasonable guess as to the comparison's selectivity;
+     * if not then a default selectivity estimate is used.
      *
      * @param comp the comparison expression
      *
      * @param exprSchema a schema specifying the environment that the expression
      *        will be evaluated within
      *
-     * @param stats a collection of column-statistics to use in making
-     *        selectivity estimates
+     * @param tableStats this table's stats to use in making selectivity estimates
      *
      * @return a selectivity estimate in the range [0, 1].
      */
     public static float estimateCompareSelectivity(CompareOperator comp,
-        Schema exprSchema, ArrayList<ColumnStats> stats) {
+        Schema exprSchema, TableStats tableStats) {
 
         float selectivity = DEFAULT_SELECTIVITY;
 
@@ -208,7 +209,7 @@ public class SelectivityEstimator {
         if (left instanceof ColumnValue && right instanceof LiteralValue) {
             // Comparison:  column op value
             selectivity = estimateCompareColumnValue(comp.getType(),
-                (ColumnValue) left, (LiteralValue) right, exprSchema, stats);
+                (ColumnValue) left, (LiteralValue) right, exprSchema, tableStats);
 
             logger.debug("Estimated selectivity of cmp-col-val operator \"" +
                 comp + "\" as " + selectivity);
@@ -216,7 +217,7 @@ public class SelectivityEstimator {
         else if (left instanceof ColumnValue && right instanceof ColumnValue) {
             // Comparison:  column op column
             selectivity = estimateCompareColumnColumn(comp.getType(),
-                (ColumnValue) left, (ColumnValue) right, exprSchema, stats);
+                (ColumnValue) left, (ColumnValue) right, exprSchema, tableStats);
 
             logger.debug("Estimated selectivity of cmp-col-col operator \"" +
                 comp + "\" as " + selectivity);
@@ -242,16 +243,13 @@ public class SelectivityEstimator {
      * @param exprSchema a schema specifying the environment that the expression
      *        will be evaluated within
      *
-     * @param stats a collection of column-statistics to use in making
-     *        selectivity estimates
+     * @param tableStats this table's stats
      *
      * @return a selectivity estimate in the range [0, 1].
      */
     private static float estimateCompareColumnValue(CompareOperator.Type compType,
         ColumnValue columnValue, LiteralValue literalValue,
-        Schema exprSchema, ArrayList<ColumnStats> stats) {
-
-        // Comparison:  column op value
+        Schema exprSchema, TableStats tableStats) {
 
         float selectivity = DEFAULT_SELECTIVITY;
 
@@ -260,58 +258,34 @@ public class SelectivityEstimator {
         int colIndex = exprSchema.getColumnIndex(columnValue.getColumnName());
         ColumnInfo colInfo = exprSchema.getColumnInfo(colIndex);
         SQLDataType sqlType = colInfo.getType().getBaseType();
-        ColumnStats colStats = stats.get(colIndex);
+        ColumnStats colStats = tableStats.getColumnStats(colIndex);
+
+        if (!typeSupportsCompareEstimates(sqlType)) {
+            return selectivity;
+        }
 
         Object value = literalValue.evaluate();
 
         switch (compType) {
         case EQUALS:
-        case NOT_EQUALS:
-            // Compute the equality value.  Then, if inequality, invert the
-            // result.
-
-            // TODO:  Compute the selectivity.  Note that the ColumnStats type
-            //        will return special values to indicate "unknown" stats;
-            //        your code should detect when this is the case, and fall
-            //        back on the default selectivity.
-
+            // T(S) = T(R)/V(R,A)
+            // Selectivity = T(S)/T(R)
+            int vra = colStats.getNumUniqueValues();
+            if (vra != -1) {
+                selectivity = 1.0f / vra;
+            }
             break;
-
+        case NOT_EQUALS:
+            // Assuming that essentially all tuples will satisfy the condition.
+            selectivity = 1.0f;
+            break;
         case GREATER_OR_EQUAL:
         case LESS_THAN:
-            // Compute the greater-or-equal value.  Then, if less-than,
-            // invert the result.
-
-            // Only estimate selectivity for this kind of expression if the
-            // column's type supports it.
-
-            if (typeSupportsCompareEstimates(sqlType) &&
-                colStats.hasDifferentMinMaxValues()) {
-
-                // TODO:  Compute the selectivity.  The if-condition ensures
-                //        that you will only compute selectivities if the type
-                //        supports it, and if there are valid stats.
-            }
-
-            break;
-
         case LESS_OR_EQUAL:
         case GREATER_THAN:
-            // Compute the less-or-equal value.  Then, if greater-than,
-            // invert the result.
-
-            // Only estimate selectivity for this kind of expression if the
-            // column's type supports it.
-
-            if (typeSupportsCompareEstimates(sqlType) &&
-                colStats.hasDifferentMinMaxValues()) {
-
-                // TODO:  Compute the selectivity.  Watch out for copy-paste
-                //        bugs...
-            }
-
+            // Assume returns one-third of the tuples
+            selectivity = 0.3f;
             break;
-
         default:
             // Shouldn't be any other comparison types...
             assert false : "Unexpected compare-operator type:  " + compType;
@@ -334,14 +308,13 @@ public class SelectivityEstimator {
      * @param exprSchema a schema specifying the environment that the expression
      *        will be evaluated within
      *
-     * @param stats a collection of column-statistics to use in making
-     *        selectivity estimates
+     * @param tableStats this table's stats to use in making selectivity estimates
      *
      * @return a selectivity estimate in the range [0, 1].
      */
     private static float estimateCompareColumnColumn(CompareOperator.Type compType,
         ColumnValue columnOne, ColumnValue columnTwo,
-        Schema exprSchema, ArrayList<ColumnStats> stats) {
+        Schema exprSchema, TableStats tableStats) {
 
         // Comparison:  column op column
 
@@ -352,8 +325,8 @@ public class SelectivityEstimator {
         int colOneIndex = exprSchema.getColumnIndex(columnOne.getColumnName());
         int colTwoIndex = exprSchema.getColumnIndex(columnTwo.getColumnName());
 
-        ColumnStats colOneStats = stats.get(colOneIndex);
-        ColumnStats colTwoStats = stats.get(colTwoIndex);
+        ColumnStats colOneStats = tableStats.getColumnStats(colOneIndex);
+        ColumnStats colTwoStats = tableStats.getColumnStats(colTwoIndex);
 
         // TODO:  Compute the selectivity.  Note that the ColumnStats type
         //        will return special values to indicate "unknown" stats;

@@ -25,7 +25,6 @@ import com.wind.nanodb.storage.InvalidFilePointerException;
 import com.wind.nanodb.storage.PageTuple;
 import com.wind.nanodb.storage.StorageManager;
 import com.wind.nanodb.storage.TupleFileManager;
-import sun.awt.X11.XSystemTrayPeer;
 
 
 /**
@@ -479,10 +478,7 @@ page_scan:  // So we can break out of the outer loop from inside the inner loop.
                     columnStatsCollector.getMinValue(),
                     columnStatsCollector.getMaxValue()
             ));
-            System.out.printf("MIN(%d) MAX(%d)\n",
-                    (Integer)columnStatsCollector.getMinValue(), (Integer)columnStatsCollector.getMaxValue());
         }
-        System.out.println();
 
         TableStats tableStats = new TableStats(dataPageCount, tupleCount,
                 (float)fileSize / tupleCount, columnStats);

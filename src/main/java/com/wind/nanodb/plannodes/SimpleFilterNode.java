@@ -9,6 +9,8 @@ import java.util.List;
 import com.wind.nanodb.expressions.Expression;
 import com.wind.nanodb.expressions.OrderByExpression;
 import com.wind.nanodb.queryeval.ColumnStats;
+import com.wind.nanodb.queryeval.PlanCost;
+import com.wind.nanodb.queryeval.SelectivityEstimator;
 
 
 /**
@@ -111,15 +113,13 @@ public class SimpleFilterNode extends SelectNode {
         schema = leftChild.getSchema();
         ArrayList<ColumnStats> childStats = leftChild.getStats();
 
-        // TODO:  Compute the cost of the plan node!
-        cost = null;
-
         // NOTE:  Normally we would also update the table statistics based on
         //        the predicate, but that's too complicated, so we'll leave
         //        them unchanged for now.
         stats = childStats;
-    }
 
+        cost = null;
+    }
 
     public void initialize() {
         super.initialize();

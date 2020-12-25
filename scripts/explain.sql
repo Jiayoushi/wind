@@ -1,0 +1,10 @@
+ANALYZE cities, states, stores, employees;
+EXPLAIN SELECT * FROM cities WHERE city_id == 30;
+EXPLAIN SELECT * FROM cities WHERE city_id != 30;
+EXPLAIN SELECT * FROM cities WHERE city_id > 30;
+EXPLAIN SELECT * FROM cities WHERE city_id >= 30;
+EXPLAIN SELECT * FROM cities WHERE city_id < 30;
+EXPLAIN SELECT * FROM cities WHERE city_id <= 30;
+EXPLAIN SELECT * FROM cities WHERE city_id == 30 AND population < 2000;
+EXPLAIN SELECT * FROM cities WHERE city_id == 30 OR population < 2000;
+QUIT;
