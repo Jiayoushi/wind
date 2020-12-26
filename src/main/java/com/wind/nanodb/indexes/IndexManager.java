@@ -5,18 +5,18 @@ import java.io.IOException;
 import java.util.List;
 
 import com.wind.nanodb.relations.ColumnRefs;
+import com.wind.nanodb.relations.TableConstraintType;
 import com.wind.nanodb.relations.TableInfo;
-import com.wind.nanodb.storage.TupleFile;
 
 
 /**
  * This interface specifies all operations that are necessary for supporting
  * indexes in NanoDB.  Indexes are implemented as
- * {@link TupleFile tuple files} with a schema
+ * {@link com.wind.nanodb.storage.TupleFile tuple files} with a schema
  * containing the indexed columns, as well as a tuple-pointer column that
  * references the indexed tuples.  Therefore, many of the specific lookup
  * operations are provided directly by the underlying
- * {@link TupleFile} implementation that exposes
+ * {@link com.wind.nanodb.storage.TupleFile} implementation that exposes
  * these operations.
  */
 public interface IndexManager {

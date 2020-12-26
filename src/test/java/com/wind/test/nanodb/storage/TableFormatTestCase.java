@@ -17,6 +17,7 @@ import com.wind.nanodb.relations.SQLDataType;
 import com.wind.nanodb.relations.Schema;
 import com.wind.nanodb.server.CommandResult;
 import com.wind.test.nanodb.sql.SqlTestCase;
+import org.junit.Test;
 
 
 /**
@@ -76,7 +77,7 @@ public class TableFormatTestCase extends SqlTestCase {
      *        to the expected contents of the table file.
      * @throws Exception if an IO error occurs, or if the test fails.
      */
-    protected void insertRows(String tableName, int numRowsToInsert,
+    public void insertRows(String tableName, int numRowsToInsert,
         int maxAValue, int minBLen, int maxBLen, boolean ordered,
         boolean deleteWhileInserting) throws Exception {
 

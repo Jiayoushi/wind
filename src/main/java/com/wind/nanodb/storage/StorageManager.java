@@ -7,9 +7,12 @@ import java.util.HashMap;
 import java.util.List;
 
 import com.wind.nanodb.indexes.BasicIndexManager;
+import com.wind.nanodb.indexes.DatabaseConstraintEnforcer;
 import com.wind.nanodb.indexes.IndexManager;
+import com.wind.nanodb.indexes.IndexUpdater;
 import com.wind.nanodb.server.EventDispatcher;
 import com.wind.nanodb.server.NanoDBServer;
+import com.wind.nanodb.storage.btreefile.BTreeTupleFileManager;
 import org.apache.log4j.Logger;
 
 import com.wind.nanodb.expressions.TypeCastException;
@@ -249,7 +252,9 @@ public class StorageManager {
         tupleFileManagers.put(DBFileType.HEAP_TUPLE_FILE,
             new HeapTupleFileManager(this));
 
-        // TODO:  Register B-tree file-type here.
+        // Register b-tree file-type
+        tupleFileManagers.put(DBFileType.BTREE_TUPLE_FILE,
+                new BTreeTupleFileManager(this));
 
         if (TransactionManager.isEnabled()) {
             logger.info("Initializing transaction manager.");
@@ -270,10 +275,10 @@ public class StorageManager {
             EventDispatcher eventDispatcher = server.getEventDispatcher();
 
             // TODO:  Register the event-handler that enforces database constraints!
-            // eventDispatcher.addRowEventListener(new DatabaseConstraintEnforcer(this));
+            eventDispatcher.addRowEventListener(new DatabaseConstraintEnforcer(server));
 
             // TODO:  Register the event-handler that updates indexes when tables change.
-            // eventDispatcher.addRowEventListener(new IndexUpdater(this));
+            eventDispatcher.addRowEventListener(new IndexUpdater(this));
         }
 
         initialized = true;

@@ -325,7 +325,7 @@ public class IndexUtils {
      * tuple in a table is referenced once by the table's index, and no index
      * entry has a tuple-reference to a non-existent tuple.  This
      * functionality is of course greatly supplemented by tuple-file formats
-     * that implement the {@link TupleFile#verify}
+     * that implement the {@link com.wind.nanodb.storage.TupleFile#verify}
      * method, which does complete verification of the internal structure of
      * a particular kind of tuple file.
      *

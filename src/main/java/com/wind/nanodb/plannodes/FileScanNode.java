@@ -234,7 +234,6 @@ public class FileScanNode extends SelectNode {
 
         if (predicate != null) {
             float selectivity = SelectivityEstimator.estimateSelectivity(predicate, schema, tableStats);
-            System.out.printf(">>>>> SELECTIVITY %f\n", selectivity);
             cost.numTuples *= selectivity;
         }
     }
